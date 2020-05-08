@@ -1,0 +1,313 @@
+---
+title: "3IF - TP de Probabilités - Distanciel"
+author: "Thibaut Gravey - Corentin Branchereau - B3405"
+date: "04 Mai 2020"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+# Partie 1
+
+Le code de cette partie se situe dans le fichier 'partie1.R'
+
+```{r setup, include=FALSE}
+library(randtoolbox)
+library(microbenchmark)
+source('generateurs.R')
+source('lois.R')
+source('file.R')
+
+sVN <- 9721
+sMT <- 2504
+sRA <- 4074
+sSM <- 1092
+
+k <- 1000
+```
+
+## Question 1
+
+Rien n'est attendu dans le compte-rendu. Toutefois, les generateurs sont placés dans le fichier source 'generateurs.R'.
+
+## Question 2.1
+
+Tout d'abord, voici le code ayant permis la génération des histogrammes des sorties observées pour une suite de k=1000 valeurs.
+
+```{r}
+vn <- VonNeumann(k,1,sVN)
+mt <- MersenneTwister(k,1,sMT)
+ra <- RANDU(k,sRA)
+sm <- StandardMinimal(k,sSM)
+
+par(mfrow=c(2,2))
+hist(mt[,1],xlab='',main='Mersenne Twister')
+hist(vn[,1],xlab='',main='Von Neumann')
+hist(ra[,1],xlab='',main='RANDU')
+hist(sm[,1],xlab='',main='Standard Minimal')
+
+```
+
+**Commentaires :** Pour _Mersenne-Twister_ et les deux générateurs à congruence linéaire _RANDU_ et _Standard Minimal_, on peut observer une équitable répartition des valeurs sur les intervalles [0,m] étudié. Disons une répartition qui semble "presque" équiprobable. On retrouve une répartition **uniforme** des valeurs aléatoires. Avec plus de valeurs, nous aurions sans doute eu une encore meilleure répartition uniforme, car il reste un peu 'd'aléatoire'. Ainsi, nous savons que ces 3 générateurs nous fournissent des valeurs bien répartis dans l'intervalle considéré. Toutefois, l'histograme du générateur de _Von Neumann_ (méthode des carrés médians) montre une bien moins bonne répartition des valeurs entre 0 et 9999. On voit qu'une très grande majorité des valeurs (disons environ 90% de nos 1000 valeurs) se situent entre 0 et 1000. Il n'y a que très peu de valeurs dans le reste de l'intervalle. On se rend bien compte sur ce premier test d'un problème avec la génération de nombre pseudo-aléatoire avec Von Neumann. La répartition n'est "visuellement" pas bonne. 
+
+## Question 2.2
+
+Valeur obtenue en fonction de la valeur précédente de chacun des algorithmes de générations aléatoires.
+
+```{r}
+par(mfrow=c(2,2))
+plot(vn[1:(k-1),1],vn[2:k,1],xlab='VN(i)', ylab='VN(i+1)', main='Von Neumann')
+plot(mt[1:(k-1),1],mt[2:k,1],xlab='MT(i)', ylab='MT(i+1)', main='Mersenne Twister')
+plot(ra[1:(k-1),1],ra[2:k,1],xlab='RA(i)', ylab='RA(i+1)', main='RANDU')
+plot(sm[1:(k-1),1],sm[2:k,1],xlab='SM(i)', ylab='SM(i+1)', main='Standard Minimal')
+```
+
+**Commentaires :** A nouveau, il y a une forte différence entre le groupe _Mersenne-Twister_, _Randu_ et _Standard Minimal_ et le générateur de _Von Neumann_. En effet, pour les trois premiers, on trouve pour la représentation de u(i+1)=f(u(i)) trois "nuages de points" assez denses. Ainsi, pour une abscisse donné autour de u(i) (à une petite variation epsilon près), cela signifie qu'on peut obtenir des valeurs suivantes u(i+1) très différentes et variées dans notre intervalle [0,m] On voit qu'on 'balaie' bien l'espace des valeurs. Les valeurs générés sont donc bien mieux répartis et semblent plus difficiles à prédires. Tandis que _Von Neumann_ donne un nuage très très peu denses, et lorsque nous sommes avec une valeur u(i), la valeur suivante u(i+1) est très souvent la même ou très proche. On retrouve d'ailleurs une forte concentration des valeurs faibles autour de 0 qui donnent pour valeur suivante une autre valeur proche de 0. Cela explique aussi le phénomène du test précédent.
+
+## Question 3
+
+La fonction 'Frequency(x,nb)' à été développé dans le fichier source 'generateurs.R'
+
+Ainsi, nous effectuons, pour 100 graines différentes et sur chacun des algorithmes, une génération de séquence de 1000 valeurs aléatoires (soit 100*1000 valeurs par algorithme) et nous récupérons 100 valeurs de $P_{valeur}$ par algorithme. $P_{valeur}$ représente la valeur de la fonction de répartition de la loi normale centrée réduite N(0,1) (on utilise le Théorème de la Limite Centrale) pour la valeur $s_{obs}$ obtenue en étudiant chaque séquence de bits générés. Plus $P_{valeur}$ est petite, plus l'indépendance dans la suite de bits ne semble pas vérifié.
+
+Plus précisément, avec une règle de décision à 1%, si $P_{valeur}$ est inférieure à 0.01, on considère que la séquence n'est pas aléatoire. Toutefois, dans le cas contraire, on ne peut pas affirmer pour autant que ce générateur aléatoire est bon, à cause de notre raisonnement par l'absurde. On peut simplement dire qu'il n'est pas mauvais.
+
+Nous obtenons alors les résultats suivants (100 $P_{valeur}$ par générateur) :
+ 
+```{r}
+MAX <- 10000
+nbVal <- 100
+seeds <- sample.int(MAX,nbVal)
+pVN <- vector("numeric",nbVal)
+pMT <- vector("numeric",nbVal)
+pRA <- vector("numeric",nbVal)
+pSM <- vector("numeric",nbVal)
+
+#Test sur 100 séquences de 1000 valeurs (avec 100 graines différentes donc) pour chaque générateur.
+for(i in 1:nbVal)
+{
+  pVN[i] <- Frequency(VonNeumann(k,1,seeds[i]),14)  #2^14-1 = 16383. On va jusqu'à 9999.
+  pMT[i] <- Frequency(MersenneTwister(k,1,seeds[i]),32) #On va jusqu'à 2^32-1
+  pRA[i] <- Frequency(RANDU(k,seeds[i]),31) #On va jusqu'à 2^31-1
+  pSM[i] <- Frequency(StandardMinimal(k,seeds[i]),31) #On va jusqu'à 2^31-2
+}
+
+par(mfrow=c(2,2))
+hist(pMT,xlab='',main='Mersenne Twister')
+hist(pVN,xlab='',main='Von Neumann')
+hist(pRA,xlab='',main='RANDU')
+hist(pSM,xlab='',main='Standard Minimal')
+```
+ 
+**Commentaires :** Comme nous utilisons une règle de décision à 1%, nous pouvons considérer les séquences comme mauvaises si les valeurs renvoyés se trouvent sous les 0,01. Ainsi, d'après les 4 histogrammes ci-dessus, _Mersenne-Twister_ et _Standard Minimal_ montrent des $P_{valeur}$ réparties dans l'intervalle [0,1] (rien d'anormal pour des probabilités) avec une répartition un peu plus élévée pour des $P_{valeur}$ autour de 0.5 pour _MT_ et autour de 0,7 pour _STM_. En réalité, on voit qu'on tend vers une répartition uniforme (et c'est ce que l'on cherche à obtenir). Dans tous les cas, on ne retrouve que quelques séquences avec une $P_{valeur}$ autour de 0,1 et donc encore moins inférieure ou égale à 0,01 (et donc que quelques séquences non aléatoires, ie de mauvaise qualité). C'est tout à fait normal que nous ayons 1% des séquences qui ne soient pas bonnes, encore une fois car nous tendons vers une répartition uniforme des séquences de bits générées.\newline
+Ainsi, ces générateurs ne semblent pas mauvais (dans le cadre du test de fréquence monobit). Et c'est encore plus visible en les opposants aux deux autres générateurs (_Von Neumann_ et _RANDU_). Effectivement, leur histogramme montre que la quasi-totalité des 100 séquences de 1000 valeurs générées possèdent une $P_{valeur}$ inférieure ou égale à 0,1. On risque donc d'avoir beaucoup plus de valeurs sous les 0.01.\newline
+Pour connaître plus précisément le nombre de $P_{valeur}$ sous cette barre des 0,01, nous allons tout simplement les compter et en calculer le pourcentage par rapport aux 100 valeurs générées :
+
+```{r, include=FALSE}
+nbVN <- 0
+nbMT <- 0
+nbRA <- 0
+nbSM <- 0
+for(i in 1:nbVal)
+{
+  if(pMT[i]<=0.01){nbMT<-nbMT+1}
+  if(pVN[i]<=0.01){nbVN<-nbVN+1}
+  if(pRA[i]<=0.01){nbRA<-nbRA+1}
+  if(pSM<=0.01){nbSM<-nbSM+1}
+}
+nbVN<-nbVN/nbVal
+nbMT<-nbMT/nbVal
+nbRA<-nbRA/nbVal
+nbSM<-nbSM/nbVal
+```
+Tableau regroupant la proportion de valeurs <= 0.01 (en %) :
+
+| **Générateur** | **Von Neumann** | **Mersenne-Twister** | **RANDU** | **Standard-Minimal** |
+| ------------- | ------------- | ------------- | ------------- | -------------  |
+| *Proportions* | `r nbVN*100`% | `r nbMT*100`% | `r nbRA*100`% | `r nbSM*100` % |
+
+Ainsi, on confirme bien que _Von Neumann_ génère uniquement des séquences de mauvaises qualités, c'est donc un mauvais générateur. De même pour _RANDU_ avec environ 70% de mauvaises séquences. Comme évoqué plus haut, _Mersenne-Twister_ et _Standard Minimal_ s'en sortent bien avec des pourcentages autour des 1% pour la proportion de mauvaises séquences. Aucun soucis de ce côté-là.
+
+## Question 4
+
+La fonction 'Runs(x,nb)' à été développé dans le fichier source 'generateurs.R'
+
+A nouveau, nous effectuons, pour 100 graines différentes et sur chacun des algorithmes, une génération de séquence de 1000 valeurs aléatoires (soit 100*1000 valeurs par algorithme) (nous utilisons les mêmes que la question précédente) et nous récupérons 100 valeurs de $P_{valeur}$ par algorithme. Cette fois-ci $P_{valeur}$ est liée à ce que l'on appelle les "runs", les suites consécutives de 0 ou de 1. 
+
+Plus précisément, avec une règle de décision à 1% comme avant, si $P_{valeur}$ est inférieure à 0.01, on considère que la séquence n'est pas aléatoire et de mauvaise qualité. Toutefois, dans le cas contraire, on ne peut pas affirmer pour autant que ce générateur aléatoire est bon, à cause de notre raisonnement par l'absurde. On peut simplement dire qu'il n'est pas mauvais.
+
+Nous obtenons alors les résultats suivants (100 $P_{valeur}$ par générateur) :
+ 
+```{r}
+#Test sur 100 séquences de 1000 valeurs (avec 100 graines différentes donc) pour chaque générateur.
+#En utilisant les mêmes séquences que tout à l'heure
+for(i in 1:nbVal)
+{
+  pVN[i] <- Runs(VonNeumann(k,1,seeds[i]),14)  #2^14-1 = 16383. On va jusqu'à 9999.
+  pMT[i] <- Runs(MersenneTwister(k,1,seeds[i]),32) #On va jusqu'à 2^32-1
+  pRA[i] <- Runs(RANDU(k,seeds[i]),31) #On va jusqu'à 2^31-1
+  pSM[i] <- Runs(StandardMinimal(k,seeds[i]),31) #On va jusqu'à 2^31-2
+}
+
+par(mfrow=c(2,2))
+hist(pMT,xlab='',main='Mersenne Twister')
+hist(pVN,xlim=c(0,1),xlab='',main='Von Neumann')
+hist(pRA,xlab='',main='RANDU')
+hist(pSM,xlab='',main='Standard Minimal')
+```
+ 
+**Commentaires :** Comme lors de la question précédente, on raisonne par l'absurde avec une règle de décision à 1%. Ainsi on voit déjà, à l'oeil sur les histogrammes, que les $P_{valeur}$ des séquences de _Mersenne Twister_ et _Standard Minimal_ semblent à nouveau tendre vers une répartition uniforme sur l'intervalle [0,1]. Ainsi, uniquement 1% des séquences semblent de mauvaise qualité au vu du test des runs. De même pour les 2 autres générateurs, la quasi-totalité des séquences ne sont pas bonnes et ne sont pas réellement aléatoires. Nous calculons de même la proportions des valeurs <= 0,01 pour valider, comme tout à l'heure, ce que nous venons d'expliquer. _Von Neumann_ et _RANDU_ ne sont pas de bons générateurs. Tandis que les 2 autres ne posent aucun problème vis-à-vis de ce test.
+
+```{r, include=FALSE}
+nbVN <- 0
+nbMT <- 0
+nbRA <- 0
+nbSM <- 0
+for(i in 1:nbVal)
+{
+  if(pMT[i]<=0.01){nbMT<-nbMT+1}
+  if(pVN[i]<=0.01){nbVN<-nbVN+1}
+  if(pRA[i]<=0.01){nbRA<-nbRA+1}
+  if(pSM<=0.01){nbSM<-nbSM+1}
+}
+nbVN<-nbVN/nbVal
+nbMT<-nbMT/nbVal
+nbRA<-nbRA/nbVal
+nbSM<-nbSM/nbVal
+```
+
+Tableau regroupant la proportion de valeurs <= 0.01 (en %) :
+
+| **Générateur** | **Von Neumann** | **Mersenne-Twister** | **RANDU** | **Standard-Minimal** |
+| ------------- | ------------- | ------------- | ------------- | -------------  |
+| *Proportions* | `r nbVN*100`% | `r nbMT*100`% | `r nbRA*100`% | `r nbSM*100` % |
+
+## Question 5 
+
+Pour cette question, le test d'ordre est déjà implémenté dans le paquet *randtoolbox*. Nous l'appliquons simplement, pour chaque générateur, à 100 séquence de 1000 nombres générés aléatoirement. Nous effectuons le même raisonnement sur la $P_{valeur}$ obtenue en sortie que lors des questions 3 et 4.
+ 
+```{r}
+d <- 4
+for(i in 1:nbVal)
+{
+  pVN[i] <- order.test(VonNeumann(k,1,seeds[i])[,1],d,FALSE)$p.value 
+  pMT[i] <- order.test(MersenneTwister(k,1,seeds[i])[,1],d,FALSE)$p.value
+  pRA[i] <- order.test(RANDU(k,seeds[i])[,1],d,FALSE)$p.value
+  pSM[i] <- order.test(StandardMinimal(k,seeds[i])[,1],d,FALSE)$p.value
+}
+par(mfrow=c(2,2))
+hist(pMT,xlab='',main='Mersenne Twister')
+hist(pVN,xlab='',main='Von Neumann')
+hist(pRA,xlab='',main='RANDU')
+hist(pSM,xlab='',main='Standard Minimal')
+```
+ 
+**Commentaires :** Encore une fois avec une règle de décision à 1%, on voit que que les hypothèses de la répartition selon une loi uniforme est vérifié pour, cette fois-ci, *MT*, *SM* et *RANDU* mais à nouveau pas pour *Von Neumann* qui possède une proportion de valeurs inférieure à 1% de 100% (on le voit directement sur l'histogramme cette fois). Avec plus de valeurs, les 3 autres générateurs se seraient encore plus rapprochés de la loi uniforme (effet de l'aléatoire sur trop peu de valeurs). A nouveau, *Von Neumann* ne génère pas de bonnes séquences et est donc un générateur de mauvaise qualité, tandis que les 3 autres ne posent aucun soucis pour ce test d'ordre et semblent générer des séquences de bonnes qualités **pour ce test là**.
+
+# Partie 2
+
+Le code de cette partie se situe dans le fichier 'partie2.R'
+
+Cette partie est optionnelle mais à été traitée en intégralité.
+
+## Question Bonus 1
+
+La fonction 'LoiBinomiale(n,p)' à été développé dans le fichier source 'lois.R'.
+
+On va découper l'intervalle [0,1] donné par la loi uniforme en deux intervalles : L'un étant [0,p] de longueur p et le second [p,1] de longueur 1-p. Le premier correspond à la réussite de l'expérience (1), l'autre à l'échec (0). Il suffit de vérifier dans quel intervalle se trouve la valeur donné par la loi uniforme. On obtient ainsi une loi de Bernouilli(p), que l'on répète n fois pour une obtenir une réalisation de la loi Binomiale(n,p).
+
+On se rend alors compte en représentant 1000 réalisations sous forme d'un diagramme bâton que l'on s'approche très clairement d'une loi gaussienne (normale) N(np,np(1-p)) représentée à la suite. Nous pouvions le prévoir de façon théorique grâce au *Théorème de la Limite Centrale*. Le phénomène est d'autant plus convaincant lorsque l'on augmente le nombre de réalisation réalisé.
+
+```{r}
+#Loi Binomiale B(n,p)
+N <- 1000
+n <- 50
+p <- 0.5
+x <- 0
+
+for(i in 1:N)
+{
+  x[i] <- LoiBinomiale(n,p)
+}
+
+#Loi Normale(np,np(1-p))
+y <- 0
+plot(table(x),xlim=c(0,n),main='Densité d\'une loi Binomiale(n,p)')
+y <- dnorm(0:n,n*p,n*p*(1-p))
+plot(y,main='Densité d\'une loi Normale N(np,np(1-p))')
+```
+
+## Question Bonus 2
+
+Les fonctions de simulation par **inversion** et **rejet** ont été développés dans le fichier source 'lois.R'.
+
+En application simplement les résultats évoqués dans le paragraphe application, nous pouvons simuler la loi continue donnée par la fonction de densité : $$ f(x)=\frac{2}{ln(2)^{2}}\frac{ln(1+x)}{1+x}1_{[0,1]}(x) $$
+
+Un premier test de performance en temps de calcul peut-être réalisé via _microbenchmark_ sur 100 appels de chaque fonction pour générer, à chaque appel, 1000 valeurs :
+
+```{r}
+# Benchmark sur 100 appels
+k <- 1000
+microbenchmark(times=100,SimulationInversion(k),SimulationRejet(k))
+```
+
+**Commentaires :** On voit ainsi que la simulation par inversion est bien plus rapide, ce qui est plutôt logique car la méthode par rejet peut être amener à boucler beaucoup plus de fois pour satisfaire la condition de non-rejet lors de la simulation. La méthode par inversion est plus direct, c'est donc normal que son temps d'exécution soit inférieur. En moyenne (*mean*), la simulation par inversion s'exécute environ **30 fois plus vite** que son homologue par rejet. Toutefois, la méthode par rejet permet de simuler des densités plus complexe, dans certains cas où l'inversion n'est pas envisageable.
+
+Enfin, voyons les résultats obtenus :
+
+```{r}
+# Vérification de la distribution des valeurs simulés
+inversion <- SimulationInversion(k)
+rejet <- SimulationRejet(k)
+x <- seq(0,1,0.01)
+
+par(mfrow=c(1,3))
+hist(inversion,xlab='',main='Simulation par Inversion d\'une densité f')
+hist(rejet,xlab='',main='Simulation par Rejet d\'une densité f')
+plot(x,(2/(log(2)^2))*(log(1+x)/(1+x)),xlab='',main='Distribution théorique')
+```
+
+**Commentaires :** On voit que les 2 simulations tendent à se rapprocher de la distribution théorique de la loi de densité f(x) présenté plus haut. De plus, les 2 simulations semblent assez proches, et si l'on travaille avec encore plus de valeurs, on s'en approcheras encore plus, car pour k = 1000 valeurs, il reste une part d'aléatoire assez forte.
+
+# Partie 3
+
+Le code de cette partie se situe dans le fichier 'partie3.R'
+
+# Question 6
+
+Rien n'est attendu dans le compte-rendu. Toutefois, la fonction FileMM1(lambda,mu,D) est placée dans le fichier source 'loi.R'.
+
+# Question 7
+
+Pour cette question, nous étions en avance. Nous avons donc commencé par mettre en place une fonction qui retourne une évolution **simple** utilisant un pas de temps régulier (par exemple, chaque minute dans notre cas). Toutefois, pour que cette fonction d'évolution puisse passer à l'échelle, comme avec l'étude de requête sur un serveur par exemple, nous avons pris le temps de développer une deuxième fonction qui n'utilise plus un pas de temps régulier mais qui génère l'évolution en fonction de valeurs précises de temps, données par un second tableau.
+
+Nous obtenons ainsi, pour une première application avec les valeurs ci-dessous, une évolution simple suivante : 
+
+| **Paramètre** | $\lambda$ | $\mu$ | *D* |
+| ------------- | ------------- | ------------- | ------------- 
+| **Valeur** | 8/60 = `r 8/60` $min^{-1}$ | 15/60 = `r 15/60` $min^{-1}$ | 12*60 = `r 12*60 `$min$ | 
+
+```{r}
+#8 clients par heure en moyenne
+lambda <- 8/60
+#15 clients par heure partent en moyenne
+mu <- 15/60
+#12 heures de fonctionnement 
+D <- 720
+  
+list_fileMM1 <- FileMM1(lambda,mu,D)
+evolSimple <- EvolutionPasDeTempsConstant(list_fileMM1[[1]],list_fileMM1[[2]],D)
+#Génération du pas de temps
+x<-0
+for(i in 1:720){x[i]=i}
+#Affichage avec une fonction en escalier
+par(mfrow=c(1,1))
+plot(x,xlab='Temps',ylab='Nombre de clients dans le système',evolSimple,type='s')
+```
+
+On voit clairement pour la première application et cette évolution basée sur un pas de temps précis, que le nombre de clients dans le système semble se stabiliser aux alentours de 0 ou 1. En effet, comme il y a, en moyenne, plus de départs que d'arrivées, le système va, malgré le caractère aléatoire des temps, finir par traiter tous les clients dans la file. C'est assez intuitif et on comprend donc bien l'évolution de ce premier graphique. Même si parfois il y a plus de clients en attente (aux alentours de 3 ou 4), ils finiront par être traités rapidement et le nombre de clients retombera aux alentours de 0.
+
+Nous allons pour la suite étudier cette évolution avec une fonction plus précise, se basant sur une évolution **plus dynamique** avec les temps "d'évènements" comme les **départs** et les **arrivées**.
+
+# Question 8
