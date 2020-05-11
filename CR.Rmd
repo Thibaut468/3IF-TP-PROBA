@@ -152,7 +152,7 @@ for(i in 1:nbVal)
 
 par(mfrow=c(2,2))
 hist(pMT,xlab='',main='Mersenne Twister')
-hist(pVN,xlim=c(0,1),xlab='',main='Von Neumann')
+hist(pVN,breaks=seq(0,1,0.01),xlim=c(0,1),xlab='',main='Von Neumann')
 hist(pRA,xlab='',main='RANDU')
 hist(pSM,xlab='',main='Standard Minimal')
 ```
@@ -308,6 +308,104 @@ plot(x,xlab='Temps',ylab='Nombre de clients dans le système',evolSimple,type='s
 
 On voit clairement pour la première application et cette évolution basée sur un pas de temps précis, que le nombre de clients dans le système semble se stabiliser aux alentours de 0 ou 1. En effet, comme il y a, en moyenne, plus de départs que d'arrivées, le système va, malgré le caractère aléatoire des temps, finir par traiter tous les clients dans la file. C'est assez intuitif et on comprend donc bien l'évolution de ce premier graphique. Même si parfois il y a plus de clients en attente (aux alentours de 3 ou 4), ils finiront par être traités rapidement et le nombre de clients retombera aux alentours de 0.
 
-Nous allons pour la suite étudier cette évolution avec une fonction plus précise, se basant sur une évolution **plus dynamique** avec les temps "d'évènements" comme les **départs** et les **arrivées**.
+Nous allons pour la suite étudier cette évolution avec une fonction plus précise, se basant sur une évolution **plus dynamique** avec les temps "d'évènements" comme les **départs** et les **arrivées**. Voici les résultats obtenus pour 4 applications différentes :
+
+| **Paramètre** | $\lambda$ | $\mu$ | *D* | $\alpha$ |
+| ------------- | ------------- | ------------- | ------------- | ------------- |
+| **Application 1** | 8/60 = `r 8/60` $min^{-1}$ | 15/60 = `r 15/60` $min^{-1}$ | `r 12*60 `$min$ | `r 8/15` $Erlang$ |
+| **Application 2** | 14/60 = `r 14/60` $min^{-1}$ | 15/60 = `r 15/60` $min^{-1}$ | `r 12*60 `$min$ | `r 14/15` $Erlang$ |
+| **Application 3** | 15/60 = `r 15/60` $min^{-1}$ | 15/60 = `r 15/60` $min^{-1}$ | `r 12*60 `$min$ | `r 15/15` $Erlang$ |
+| **Application 4** | 20/60 = `r 20/60` $min^{-1}$ | 15/60 = `r 15/60` $min^{-1}$ | `r 12*60 `$min$ | `r 20/15` $Erlang$ |
+
+```{r}
+#8 clients par heure en moyenne
+lambda <- 8/60
+#15 clients par heure partent en moyenne
+mu <- 15/60
+#12 heures de fonctionnement 
+D <- 720
+
+list_fileMM1 <- FileMM1(lambda,mu,D)
+list_evolDyna <- EvolutionDynamique(list_fileMM1[[1]],list_fileMM1[[2]],D)
+
+#Affichage avec une fonction en escalier
+par(mfrow=c(1,1))
+plot(list_evolDyna[[1]],xlab='Temps',ylab='Nombre de clients dans le système - App1',list_evolDyna[[2]],type='s')
+
+#14 clients par heure en moyenne
+lambda <- 14/60
+#15 clients par heure partent en moyenne
+mu <- 15/60
+#12 heures de fonctionnement 
+D <- 720
+
+list_fileMM1 <- FileMM1(lambda,mu,D)
+list_evolDyna <- EvolutionDynamique(list_fileMM1[[1]],list_fileMM1[[2]],D)
+
+#Affichage avec une fonction en escalier
+par(mfrow=c(1,1))
+plot(list_evolDyna[[1]],xlab='Temps',ylab='Nombre de clients dans le système - App2',list_evolDyna[[2]],type='s')
+
+#15 clients par heure en moyenne
+lambda <- 15/60
+#15 clients par heure partent en moyenne
+mu <- 15/60
+#12 heures de fonctionnement 
+D <- 720
+
+list_fileMM1 <- FileMM1(lambda,mu,D)
+list_evolDyna <- EvolutionDynamique(list_fileMM1[[1]],list_fileMM1[[2]],D)
+
+#Affichage avec une fonction en escalier
+par(mfrow=c(1,1))
+plot(list_evolDyna[[1]],xlab='Temps',ylab='Nombre de clients dans le système - App3',list_evolDyna[[2]],type='s')
+
+#20 clients par heure en moyenne
+lambda <- 20/60
+#15 clients par heure partent en moyenne
+mu <- 15/60
+#12 heures de fonctionnement 
+D <- 720
+
+list_fileMM1 <- FileMM1(lambda,mu,D)
+list_evolDyna <- EvolutionDynamique(list_fileMM1[[1]],list_fileMM1[[2]],D)
+
+#Affichage avec une fonction en escalier
+par(mfrow=c(1,1))
+plot(list_evolDyna[[1]],xlab='Temps',ylab='Nombre de clients dans le système - App4',list_evolDyna[[2]],type='s')
+```
+
+**Commentaires :** On se rend finalement compte qu'il existe dans cette modélisation continue d'une chaîne de Markov **3 régimes** liés directement à **l'intensité du trafic** sur un serveur $\alpha$ = $\lambda$/$\mu$. En effet, pour $\alpha > 1$, c'est-à-dire lorsque qu'il y plus d'arrivée que de départ, le nombre de personne dans la file explose car le régime est **divergent** en probabilité. Dans notre exemple cela correspond à la **4ème** application. Lorsque $\alpha < 1$, c'est-à-dire lorsque qu'il y a plus de départ que d'arrivée, le nombre de personne diminue et semble finir par être stable autour d'une valeur car le régime est **convergent** en probabilité (**surtout 1ère et un peu 2ème application**). Enfin, lors du cas limite $\alpha = 1$ (**3ème application**), la convergence mathématiques ne nous permet pas de considérer le régime comme étant stable ou non car il est ni convergent, ni divergent. On ne peut pas réellement savoir, il semble parfois se stabiliser pour se relancer, parfois l'inverse, il est **instable**.
 
 # Question 8
+
+D'après le sujet, on a comme valeur théorique : $E(N)$=$alpha$/$(1-\alpha)$ et $E(W)$=$E(N)$/$\lambda$ avec E(N) l'espérance du nombre de clients dans le système et E(W) l'espérance du temps d'attente dans le système. Les mesures expérimentales sont implémentés dans le fichier source *file.R*.
+
+Pour cette étude, nous prenons pour valeurs celles de l'application 1 où $\alpha$ = `r 8/15` < 1. Effectivement, ce sont les seules valeurs où l'on obtient une bonne convergence en probabilité. On obtient alors les résultats suivants :
+
+```{r}
+#8 clients par heure en moyenne
+lambda <- 8/60
+#15 clients par heure partent en moyenne
+mu <- 15/60
+#12 heures de fonctionnement 
+D <- 720
+
+list_fileMM1 <- FileMM1(lambda,mu,D)
+list_evolDyna <- EvolutionDynamique(list_fileMM1[[1]],list_fileMM1[[2]],D)
+nbMoyen <- NombreClientsMoyens(list_evolDyna[[1]],list_evolDyna[[2]],D)
+tpsMoyen <- TempsAttenteMoyen(list_fileMM1[[1]],list_fileMM1[[2]])
+
+#E(N)=espérance du nbre de client = alpha/(1-alpha)
+alpha <- lambda/mu
+theorieNbMoyen <- alpha/(1-alpha)
+#E(W)=temps d'attente moyen = E[N]/lambda
+theorieTpsMoyen <- theorieNbMoyen/lambda
+```
+
+| **Paramètres** | $E(N)$ | $E(W)$ |
+| ------------- | ------------- | ------------- | 
+| **Théorique** | `r theorieNbMoyen` personnes | `r theorieTpsMoyen` min | 
+| **Calculés** | `r nbMoyen` personnes | `r tpsMoyen` min | 
+
+**Commentaires :** Les valeurs sont plutôt **proches** entre la théorie et la pratique. Ainsi, notre expérience semble bien recouper la **formule de Little**, on en conclue donc qu'elle s'applique dans notre cas du système à un serveur.

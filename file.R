@@ -75,3 +75,78 @@ EvolutionPasDeTempsConstant <- function(arr,dep,D) #nombre de personne dans la f
   }
   return(nbPersonne)
 }
+
+EvolutionDynamique<-function(arr,dep,D){ 
+  #Deuxième fonction, qui renvoie deux tableau: un tableau de 
+  #Temps[i], ou sont enregistrés a quels moments le nombre de personne change,
+  #et un tableau File[i] stockant pour chaque Temps[i] le nombre de personne dans la liste d'attente
+  Temps<-0
+  File<-0 #a chaque Temps[i], on associe File[i] qui correspond au nombre de personne en attente
+  indiceArr=1
+  indiceDep=1
+  indiceFinal=2
+  #initialisation
+  Temps[1]=0
+  File[1]=0
+  
+  while(indiceArr<length(arr) && indiceDep<length(dep))
+  {
+    if(arr[indiceArr]<=dep[indiceDep])
+    {
+      Temps[indiceFinal]=arr[indiceArr]
+      File[indiceFinal]=File[indiceFinal-1]+1
+      indiceFinal=indiceFinal+1
+      indiceArr=indiceArr+1
+    }
+    else
+    {
+      Temps[indiceFinal]=dep[indiceDep]
+      File[indiceFinal]=File[indiceFinal-1]-1
+      indiceFinal=indiceFinal+1
+      indiceDep=indiceDep+1
+    }
+  }
+  if (indiceArr <= length(arr))
+  {
+    for (k in indiceArr:length(arr))
+    {
+      File[k+indiceDep] = File[k+indiceDep-1] + 1;
+      Temps[k+indiceDep] = arr[k];
+    }
+  }else{
+    for (k in indiceDep:length(dep))
+    {
+      File[k+indiceArr] = File[k+indiceArr-1] + 1;
+      Temps[k+indiceArr] = dep[k];
+    }
+  }
+  return(list(Temps,File))
+}
+
+
+# Implémentation.s question 8
+#Nombre moyens de clients dans le système, pondéré par leur temps d'attente dans la file
+NombreClientsMoyens <- function(temps,evolSysteme,D)
+{
+  ret <- 0
+  for(i in 1:(length(temps)-1))
+  {
+    ret <- ret + (evolSysteme[i]*(temps[i+1]-temps[i]))
+  }
+  ret <- ret + (evolSysteme[length(temps)]*(D-temps[length(temps)]));
+  #Normalisation
+  ret <- ret/D
+  return(ret)
+}
+
+#Temps d'attente moyen
+TempsAttenteMoyen <- function(arr,dep)
+{
+  ret <- 0
+  for(i in 1:length(dep))
+  {
+    ret <- ret + (dep[i]-arr[i])
+  }
+  ret <- ret/length(dep)
+  return(ret)
+}
